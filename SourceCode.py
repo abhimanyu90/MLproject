@@ -22,9 +22,9 @@ i = 0
 time1=0;
 
 for index, row in df.iterrows():
-    mydict = {"vibration": row['vibration_of_hydraulic_unit_oil_pump_22m2'], "oil": row['oil_delivery_pump_tp_y_pockets_40m4_current__b'], "time": row['entrytime']}
+    mydict = {"vibration": row['vibration_of_hydraulic_unit_oil_pump_22m2'], "oil": row['oil_delivery_pump_tp_y_pockets_40m4_current__b'], "time": row['entrytime'], "axes_tank_level": row['axes_hydrostatic_tank_level'], "table_tank_level": row['table_hydrostatic_tank_level']}
     time1 = mydict['time']
-    
+
     l.append(time1)
 
     if i == 0:
@@ -76,22 +76,22 @@ def update_chart(selected_row, chart_type, n_clicks):
     try:
         custom_scale_min = 0
         custom_scale_max = 500
-    
+
         row_data = df.iloc[selected_row - 1]
 
         if chart_type == 'bar':
             fig = px.bar(row_data, x=row_data.index, y=row_data.values, title=f'Bar Chart for Row {selected_row}')
         elif chart_type == 'scatter':
             fig = px.scatter(row_data, x=row_data.index, y=row_data.values, title=f'Scatter Plot for Row {selected_row}')
-        
+
         fig.update_yaxes(range=[custom_scale_min, custom_scale_max])
-        
+
         if n_clicks > 0:
             column_means = df.mean()
             mean_values_text = "Mean Values:\n" + "\n".join(f"{col}: {mean:.2f}" for col, mean in column_means.items())
         else:
             mean_values_text = ""
-        
+
         return fig, mean_values_text
     except Exception as e:
         return {
@@ -128,20 +128,27 @@ def median2():
     m3 = df['oil_delivery_pump_tp_y_pockets_40m4_current__b'].median()
     mylabel4 = Label(root, text=m3).pack()
 
-def linear_regression():
-    X = df['vibration_of_hydraulic_unit_oil_pump_22m2'].values.reshape(-1, 1)
-    y = df['oil_delivery_pump_tp_y_pockets_40m4_current__b'].values
-    
+
+def multi_linear_regression():
+    X = df[['axes_hydrostatic_tank_level', 'vibration_of_hydraulic_unit_oil_pump_22m2', 'oil_delivery_pump_tp_y_pockets_40m4_current__b']].values
+    y = df['table_hydrostatic_tank_level'].values
+
     model = LinearRegression()
     model.fit(X, y)
-    slope = model.coef_[0]
-    intercept = model.intercept_
-    
-    equation_text = f"Linear Regression Equation: y = {slope:.2f}x + {intercept:.2f}"
-    mylabel5 = Label(root, text=equation_text).pack()
 
+    coefficients = pd.DataFrame(model.coef_, df.columns[1:4], columns=['Coefficients'])
+    intercept = pd.DataFrame({'Intercept': [model.intercept_]})
+
+    print("Coefficients:")
+    print(coefficients)
+    print("Intercept:")
+    print(intercept)
+    new_data = df.iloc[[0, 1], [1, 2, 3]]  # Select rows 0 and 1, and columns 1, 2, and 3  # Example new data for axes_tank_level, vibration, and oil
+    predicted_table_tank_level = model.predict(new_data)
+    prediction_text = f"Predicted table tank level for new data: {predicted_table_tank_level[0]:.2f}"
+    mylabel6 = Label(root, text=prediction_text).pack()
 clicked = StringVar()
-drop = OptionMenu(root, clicked, "vibration_of_hydraulic_unit_oil_pump_22m2", "oil_delivery_pump_tp_y_pockets_40m4_current__b", "time")
+drop = OptionMenu(root, clicked, "vibration_of_hydraulic_unit_oil_pump_22m2", "oil_delivery_pump_tp_y_pockets_40m4_current__b", "time", "axes_hydrostatic_tank_level", "table_hydrostatic_tank_level")
 drop.pack()
 button = tk.Button(root, text="Run Dash App", command=run_dash_app)
 button.pack()
@@ -150,6 +157,7 @@ myButton2 = Button(root, text="show mean of vibration", command=mean1).pack()
 myButton3 = Button(root, text="show mean of oil", command=mean2).pack()
 myButton4 = Button(root, text="show median of vibration", command=median1).pack()
 myButton5 = Button(root, text="show median of oil", command=median2).pack()
-myButton6 = Button(root, text="Linear Regression", command=linear_regression).pack()
+myButton6 = Button(root, text="Multi Linear Regression", command=multi_linear_regression).pack()
 
 root.mainloop()
+
